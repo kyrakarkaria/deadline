@@ -12,9 +12,16 @@ SCOPES = [
 ]
 
 def get_calendar_service():
+    import json
     creds = None
-    if os.path.exists("token.json"):
+    
+    # Try environment variable first (for production)
+    token_json = os.getenv("GOOGLE_TOKEN_JSON")
+    if token_json:
+        creds = Credentials.from_authorized_user_info(json.loads(token_json), SCOPES)
+    elif os.path.exists("token.json"):
         creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+    
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -23,6 +30,7 @@ def get_calendar_service():
             creds = flow.run_local_server(port=0)
         with open("token.json", "w") as f:
             f.write(creds.to_json())
+    
     return creds
 
 def get_upcoming_deadlines(days_ahead: int = 14) -> list:
