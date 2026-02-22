@@ -169,45 +169,47 @@ async def save_doc(assignment_id: int, data: DocSaveInput):
     return {"status": "saved"}
 
 # ─── CALENDAR SYNC ──────────────────────────────────────────────────────────
-
 @app.get("/api/calendar-sync")
 async def calendar_sync():
-    from services.calendar_service import get_upcoming_deadlines
-    from datetime import datetime
-    
-    events = get_upcoming_deadlines(14)
-    added = 0
-    
-    for event in events:
-        try:
-            conn = await get_connection()
-            existing = await conn.fetchrow(
-                "SELECT id FROM assignments WHERE name = $1 AND status != 'completed'", event["title"]
-            )
-            if not existing:
-                due_str = event["due"]
-                from datetime import datetime, timezone
-                try:
-                    due_dt = datetime.fromisoformat(due_str)
-                    if due_dt.tzinfo is None:
-                        due_dt = due_dt.replace(tzinfo=timezone.utc)
-                except Exception as e:
-                    print(f"Date parse error: {e}")
-                    continue
-                
-                await conn.execute("""
-                    INSERT INTO assignments
-                    (name, description, due, type, recipient_type, weight, difficulty)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
-                """, event["title"],
-                    event.get("description", "Synced from Google Calendar"),
-                    due_dt, "other", event.get("recipient_type", "professor"), 100, 3)
-                added += 1
-            await conn.close()
-        except Exception as e:
-            print(f"Sync error: {e}")
-    
-    return {"synced": added}
+    try:
+        from services.calendar_service import get_upcoming_deadlines
+        from datetime import datetime, timezone
+        
+        events = get_upcoming_deadlines(14)
+        added = 0
+        
+        for event in events:
+            try:
+                conn = await get_connection()
+                existing = await conn.fetchrow(
+                    "SELECT id FROM assignments WHERE name = $1 AND status != 'completed'", event["title"]
+                )
+                if not existing:
+                    due_str = event["due"]
+                    try:
+                        due_dt = datetime.fromisoformat(due_str)
+                        if due_dt.tzinfo is None:
+                            due_dt = due_dt.replace(tzinfo=timezone.utc)
+                    except Exception as e:
+                        print(f"Date parse error: {e}")
+                        continue
+                    
+                    await conn.execute("""
+                        INSERT INTO assignments
+                        (name, description, due, type, recipient_type, weight, difficulty)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    """, event["title"],
+                        event.get("description") or "Synced from Google Calendar — add details here",
+                        due_dt, "other", event.get("recipient_type", "professor"), 100, 3)
+                    added += 1
+                await conn.close()
+            except Exception as e:
+                print(f"Sync error: {e}")
+        
+        return {"synced": added}
+    except Exception as e:
+        print(f"Calendar sync failed: {e}")
+        return {"synced": 0, "error": "Calendar not configured on this server"}
 @app.delete("/api/assignments/{assignment_id}")
 async def delete_assignment(assignment_id: int):
     conn = await get_connection()
