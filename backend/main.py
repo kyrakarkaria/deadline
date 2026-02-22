@@ -1,9 +1,10 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException,Body
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 from langchain_core.messages import HumanMessage
 from agents.orchestrator import agent, analyze_code_completion
 from pydantic import BaseModel
+from datetime import datetime
 from db.models import get_connection, get_all_assignments, update_assignment_status
 from services.gmail_service import send_email as gmail_send
 import json
@@ -30,6 +31,7 @@ class AssignmentInput(BaseModel):
     resource_type: str = "github"
     recipient_type: str = "professor"
     professor_email: str = ""
+    contact_name: str = ""
 
 class EmailPayload(BaseModel):
     to: str
@@ -66,13 +68,13 @@ async def create_assignment(data: AssignmentInput):
     conn = await get_connection()
     due_dt = datetime.fromisoformat(data.due)
     row = await conn.fetchrow("""
-        INSERT INTO assignments (name, description, due, difficulty, weight, type,
-                                linked_resource, resource_type, recipient_type, professor_email)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING id
-    """, data.name, data.description, due_dt, data.difficulty, data.weight,
-        data.type, data.linked_resource, data.resource_type,
-        data.recipient_type, data.professor_email)
+    INSERT INTO assignments (name, description, due, difficulty, weight, type,
+                    linked_resource, resource_type, recipient_type, professor_email, contact_name)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    RETURNING id
+""", data.name, data.description, due_dt, data.difficulty, data.weight,
+    data.type, data.linked_resource, data.resource_type,
+    data.recipient_type, data.professor_email, data.contact_name)
     await conn.close()
     return {"id": row["id"], "message": "Assignment saved"}
 
@@ -95,7 +97,25 @@ async def get_assignment(assignment_id: int):
     if result.get("due"): result["due"] = result["due"].isoformat()
     if result.get("created_at"): result["created_at"] = result["created_at"].isoformat()
     return result
-
+@app.patch("/api/assignments/{assignment_id}/edit")
+async def edit_assignment(assignment_id: int, data: dict = Body(...)):
+    conn = await get_connection()
+    await conn.execute("""
+    UPDATE assignments SET
+        name = $1, description = $2, due = $3,
+        difficulty = $4, weight = $5, recipient_type = $6,
+        professor_email = $7, contact_name = $8,
+        type = $9, linked_resource = $10
+    WHERE id = $11
+""", data["name"], data.get("description") or "",
+    datetime.fromisoformat(data["due"]),
+    data["difficulty"], data["weight"],
+    data["recipient_type"], data.get("professor_email", ""),
+    data.get("contact_name", ""),
+    data.get("type", "other"), data.get("linked_resource", ""),
+    assignment_id)
+    await conn.close()
+    return {"updated": assignment_id}
 @app.patch("/api/assignments/{assignment_id}")
 async def update_status(assignment_id: int, status: str):
     await update_assignment_status(assignment_id, status)
@@ -162,17 +182,21 @@ async def calendar_sync():
         try:
             conn = await get_connection()
             existing = await conn.fetchrow(
-                "SELECT id FROM assignments WHERE name = $1", event["title"]
+                "SELECT id FROM assignments WHERE name = $1 AND status != 'completed'", event["title"]
             )
             if not existing:
                 due_str = event["due"]
+                from datetime import datetime, timezone
                 try:
                     due_dt = datetime.fromisoformat(due_str)
-                except:
-                    due_dt = datetime.fromisoformat(due_str.replace("Z", "+00:00"))
+                    if due_dt.tzinfo is None:
+                        due_dt = due_dt.replace(tzinfo=timezone.utc)
+                except Exception as e:
+                    print(f"Date parse error: {e}")
+                    continue
                 
                 await conn.execute("""
-                    INSERT INTO assignments 
+                    INSERT INTO assignments
                     (name, description, due, type, recipient_type, weight, difficulty)
                     VALUES ($1, $2, $3, $4, $5, $6, $7)
                 """, event["title"],
@@ -184,6 +208,12 @@ async def calendar_sync():
             print(f"Sync error: {e}")
     
     return {"synced": added}
+@app.delete("/api/assignments/{assignment_id}")
+async def delete_assignment(assignment_id: int):
+    conn = await get_connection()
+    await conn.execute("DELETE FROM assignments WHERE id = $1", assignment_id)
+    await conn.close()
+    return {"deleted": assignment_id}
 # ─── CODE RUNNER ────────────────────────────────────────────────────────────
 
 @app.post("/api/run-code")
@@ -277,6 +307,8 @@ async def plan_stream():
                 if a.get("created_at"): a["created_at"] = a["created_at"].isoformat()
 
             prompt = f"""You are an academic planning agent. Analyze this student's full workload.
+
+IMPORTANT: Always refer to assignments by their NAME not their ID number.
 
 Assignments:
 {json.dumps(assignments, indent=2, default=str)}

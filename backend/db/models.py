@@ -57,7 +57,11 @@ async def create_tables():
     """)
     await conn.close()
     print("Tables created successfully")
-
+async def delete_assignment(assignment_id: int):
+    conn = await get_connection()
+    await conn.execute("DELETE FROM assignments WHERE id = $1", assignment_id)
+    await conn.close()
+    return {"deleted": assignment_id}
 async def save_decision(assignment_name: str, decision: str, reasoning: str, email_draft: str = ""):
     conn = await get_connection()
     await conn.execute("""

@@ -9,7 +9,7 @@ import operator
 import os
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path="../.env")
+load_dotenv()
 
 llm_base = ChatGoogleGenerativeAI(
     model="gemini-flash-latest",

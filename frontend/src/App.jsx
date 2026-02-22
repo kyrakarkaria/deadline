@@ -5,7 +5,7 @@ import StarterKit from "@tiptap/starter-kit";
 import {
   LayoutDashboard, PlusCircle, CalendarClock, Code2, FileText,
   Github, RefreshCw, CheckCircle, Send, Copy, ChevronRight,
-  Clock, AlertTriangle, Sparkles, BookOpen, Cpu, Mail, X, RotateCcw
+  Clock, AlertTriangle, Sparkles,Pencil, BookOpen, Cpu, Mail, X, RotateCcw, Trash2
 } from "lucide-react";
 
 const API = "http://127.0.0.1:8000";
@@ -66,10 +66,11 @@ export default function App() {
     name: "", description: "", due: "", difficulty: 3,
     weight: 100, type: "code", linked_resource: "",
     resource_type: "github", recipient_type: "professor",
-    professor_email: "",
-  });
+    professor_email: "", contact_name: "",
+});
   const saveTimer = useRef(null);
   const bottomRef = useRef(null);
+  const [editModal, setEditModal] = useState(null);
 
   const editor = useEditor({
     extensions: [StarterKit],
@@ -100,6 +101,16 @@ export default function App() {
     },
   });
 
+ const editAssignment = async () => {
+  await fetch(`${API}/api/assignments/${editModal.id}/edit`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(editModal)
+  });
+  await fetchAssignments();
+  setEditModal(null);
+};
+
   useEffect(() => { fetchAssignments(); }, []);
   useEffect(() => {
     const synced = sessionStorage.getItem("calendarSynced");
@@ -114,6 +125,7 @@ export default function App() {
   };
 
   const fetchAssignments = async () => {
+    
     const res = await fetch(`${API}/api/assignments`);
     setAssignments(await res.json());
   };
@@ -128,6 +140,13 @@ export default function App() {
     setTab("dashboard");
     setForm({ name: "", description: "", due: "", difficulty: 3, weight: 100, type: "code", linked_resource: "", resource_type: "github", recipient_type: "professor", professor_email: "" });
   };
+  const deleteAssignment = async (id) => {
+  if (!confirm("Delete this task?")) return;
+  await fetch(`${API}/api/assignments/${id}`, { method: "DELETE" });
+  const res = await fetch(`${API}/api/assignments`);
+  const data = await res.json();
+  setAssignments(data);
+};
 
   const markDone = async (id) => {
     await fetch(`${API}/api/assignments/${id}?status=completed`, { method: "PATCH" });
@@ -136,6 +155,8 @@ export default function App() {
 
   const openEditor = async (assignment) => {
     setSelectedAssignment(assignment);
+    setCode("# Start coding here\n");
+    if (editor) editor.commands.setContent("<p>Start writing here...</p>");
     if (assignment.type === "github") {
       setTab("github"); setGithubData(null);
       const res = await fetch(`${API}/api/sync-github/${assignment.id}`, { method: "POST" });
@@ -462,6 +483,12 @@ export default function App() {
                       <button className="btn" onClick={() => markDone(a.id)} style={{ background: "#40916c", fontSize: 12, padding: "6px 12px" }}>
                         <CheckCircle size={12} />
                       </button>
+                      <button className="btn" onClick={() => deleteAssignment(a.id)} style={{ background: "#e63946", fontSize: 12, padding: "6px 12px" }}>
+  <Trash2 size={12} />
+</button>
+                    <button className="btn" onClick={() => setEditModal({...a, due: new Date(a.due).toISOString().slice(0,16), description: a.description || ""})} style={{ background: "#6c63b6", fontSize: 12, padding: "6px 12px" }}>
+  <Pencil size={12} />
+</button>
                     </div>
                   </div>
                 );
@@ -523,12 +550,16 @@ export default function App() {
                     <option value="self">Self / Personal</option>
                   </select>
                 </div>
-
+                <div>
+  <label style={lbl}>Professor / Senior Name</label>
+  <input className="field" placeholder="e.g. Dr. Sharma"
+    value={form.contact_name} onChange={e => setForm({ ...form, contact_name: e.target.value })} />
+</div>
                 <div>
                   <label style={lbl}>Their Email</label>
                   <input className="field" placeholder="prof@university.edu" value={form.professor_email} onChange={e => setForm({ ...form, professor_email: e.target.value })} />
                 </div>
-
+                
                 <div>
                   <label style={lbl}>Difficulty — <span className="handwritten" style={{ fontSize: 16 }}>{"★".repeat(form.difficulty)}{"☆".repeat(5 - form.difficulty)}</span></label>
                   <input type="range" min="1" max="5" value={form.difficulty} onChange={e => setForm({ ...form, difficulty: parseInt(e.target.value) })} />
@@ -570,7 +601,7 @@ export default function App() {
             )}
 
             {planSections && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
                 {/* Priority Order — full width */}
                 {planSections["Priority Order"] && (
@@ -628,33 +659,35 @@ export default function App() {
                 )}
 
                 {/* 48-Hour Schedule */}
-                {planSections["48-Hour Schedule"] && (
-                  <div className="card" style={{ padding: 28 }}>
-                    <div className="handwritten" style={{ fontSize: 26, color: C.ink, marginBottom: 16, fontWeight: 700 }}>48-Hour Schedule</div>
-                    <div style={{ position: "relative", paddingLeft: 28 }}>
-                      <div className="timeline-line" />
-                      {planSections["48-Hour Schedule"].split("\n").filter(l => l.trim()).map((line, i) => {
-                        const text = strip(line).replace(/^\*\s*/, "");
-                        if (!text) return null;
-                        const isHeader = /friday|saturday|sunday|monday|today|tomorrow/i.test(text);
-                        const isTime = /\d{1,2}:\d{2}/.test(text);
-                        if (isHeader) return (
-                          <div key={i} style={{ marginBottom: 10, marginTop: i > 0 ? 18 : 0 }}>
-                            <span className="handwritten" style={{ fontSize: 18, color: C.lavender, fontWeight: 700 }}>{text}</span>
-                          </div>
-                        );
-                        return (
-                          <div key={i} style={{ position: "relative", marginBottom: 8 }}>
-                            <div style={{ position: "absolute", left: -22, top: 8, width: 10, height: 10, borderRadius: "50%", background: isTime ? C.lavender : C.border, border: `2px solid ${C.paper}` }} />
-                            <div style={{ padding: "8px 12px", background: isTime ? "#f5f2ff" : C.bg, borderRadius: 8, fontSize: 13, lineHeight: 1.5, fontWeight: isTime ? 700 : 400, color: isTime ? "#6c63b6" : C.ink, border: isTime ? "1px solid #e0d8f5" : "none" }}>
-                              {text}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                {planSections["48-Hour Schedule"].split("\n").filter(l => l.trim()).map((line, i) => {
+  const text = strip(line).replace(/^\*\s*/, "");
+  if (!text) return null;
+  const isHeader = /friday|saturday|sunday|monday|today|tomorrow|tonight/i.test(text);
+  const isTime = /\d{1,2}:\d{2}/.test(text);
+  const isSleep = /sleep|rest|break/i.test(text);
+  
+  if (isHeader) return (
+    <div key={i} style={{ marginBottom: 10, marginTop: i > 0 ? 18 : 0 }}>
+      <span className="handwritten" style={{ fontSize: 18, color: C.lavender, fontWeight: 700 }}>{text}</span>
+    </div>
+  );
+  
+  if (isSleep) return (
+    <div key={i} style={{ position: "relative", marginBottom: 8 }}>
+      <div style={{ position: "absolute", left: -22, top: 8, width: 10, height: 10, borderRadius: "50%", background: C.sage, border: `2px solid ${C.paper}` }} />
+      <div className="handwritten" style={{ padding: "6px 12px", fontSize: 15, color: C.faded, fontStyle: "italic" }}>{text}</div>
+    </div>
+  );
+  
+  return (
+    <div key={i} style={{ position: "relative", marginBottom: 8 }}>
+      <div style={{ position: "absolute", left: -22, top: 8, width: 10, height: 10, borderRadius: "50%", background: isTime ? C.lavender : C.border, border: `2px solid ${C.paper}` }} />
+      <div style={{ padding: "8px 12px", background: isTime ? "#f5f2ff" : C.bg, borderRadius: 8, fontSize: 13, lineHeight: 1.5, fontWeight: isTime ? 700 : 400, color: isTime ? "#6c63b6" : C.ink, border: isTime ? "1px solid #e0d8f5" : "none" }}>
+        {text}
+      </div>
+    </div>
+  );
+})}
 
                 {/* Extension Recommendations */}
                 {planSections["Extension Recommendations"] && (
@@ -845,7 +878,88 @@ export default function App() {
             </div>
           </div>
         </div>
+
       )}
+
+      {editModal && (
+  <div style={{ position: "fixed", inset: 0, background: "rgba(44,36,56,0.5)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+    <div className="card fade" style={{ padding: 36, width: 620, maxHeight: "90vh", overflow: "auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+        <div className="handwritten" style={{ fontSize: 28, color: C.ink, fontWeight: 700 }}>Edit Task</div>
+        <button onClick={() => setEditModal(null)} style={{ background: "none", border: "none", cursor: "pointer", color: C.faded }}><X size={20} /></button>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div style={{ gridColumn: "1/-1" }}>
+          <label style={lbl}>Task Name</label>
+          <input className="field" value={editModal.name || ""} onChange={e => setEditModal({ ...editModal, name: e.target.value })} />
+        </div>
+
+        <div style={{ gridColumn: "1/-1" }}>
+          <label style={lbl}>Description</label>
+          <textarea className="field" style={{ height: 100, resize: "vertical" }} value={editModal.description || ""} onChange={e => setEditModal({ ...editModal, description: e.target.value })} />
+        </div>
+
+        <div>
+          <label style={lbl}>Due Date & Time</label>
+          <input type="datetime-local" className="field" value={editModal.due || ""} onChange={e => setEditModal({ ...editModal, due: e.target.value })} />
+        </div>
+
+        <div>
+          <label style={lbl}>Task Type</label>
+          <select className="field" value={editModal.type || "other"} onChange={e => setEditModal({ ...editModal, type: e.target.value })}>
+            <option value="code">Code — in-app editor</option>
+            <option value="github">Code — GitHub repo</option>
+            <option value="essay">Essay / Report</option>
+            <option value="presentation">Presentation</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        {editModal.type === "github" && (
+          <div style={{ gridColumn: "1/-1" }}>
+            <label style={lbl}>GitHub Repo</label>
+            <input className="field" placeholder="username/repo-name" value={editModal.linked_resource || ""} onChange={e => setEditModal({ ...editModal, linked_resource: e.target.value })} />
+          </div>
+        )}
+
+        <div>
+          <label style={lbl}>Assigned by</label>
+          <select className="field" value={editModal.recipient_type || "professor"} onChange={e => setEditModal({ ...editModal, recipient_type: e.target.value })}>
+            <option value="hod">HOD — highest priority</option>
+            <option value="professor">Professor</option>
+            <option value="senior">Senior / TA</option>
+            <option value="self">Self / Personal</option>
+          </select>
+        </div>
+
+        <div>
+          <label style={lbl}>Professor / Senior Name</label>
+          <input className="field" placeholder="e.g. Dr. Sharma" value={editModal.contact_name || ""} onChange={e => setEditModal({ ...editModal, contact_name: e.target.value })} />
+        </div>
+
+        <div>
+          <label style={lbl}>Their Email</label>
+          <input className="field" placeholder="prof@university.edu" value={editModal.professor_email || ""} onChange={e => setEditModal({ ...editModal, professor_email: e.target.value })} />
+        </div>
+
+        <div>
+          <label style={lbl}>Difficulty — <span className="handwritten" style={{ fontSize: 16 }}>{"★".repeat(editModal.difficulty || 3)}{"☆".repeat(5 - (editModal.difficulty || 3))}</span></label>
+          <input type="range" min="1" max="5" value={editModal.difficulty || 3} onChange={e => setEditModal({ ...editModal, difficulty: parseInt(e.target.value) })} />
+        </div>
+
+        <div>
+          <label style={lbl}>Weight %</label>
+          <input type="number" className="field" value={editModal.weight || 100} onChange={e => setEditModal({ ...editModal, weight: parseInt(e.target.value) })} />
+        </div>
+      </div>
+
+      <button className="btn" onClick={editAssignment} style={{ marginTop: 24, background: C.ink, width: "100%", justifyContent: "center", padding: "12px" }}>
+        <CheckCircle size={14} /> Save Changes
+      </button>
+    </div>
+  </div>
+)}
     </div>
   );
 }

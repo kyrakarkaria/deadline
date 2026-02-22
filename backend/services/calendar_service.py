@@ -7,6 +7,7 @@ from googleapiclient.discovery import build
 
 SCOPES = [
     "https://www.googleapis.com/auth/calendar.readonly",
+    "https://www.googleapis.com/auth/tasks.readonly",
     "https://www.googleapis.com/auth/gmail.send"
 ]
 
@@ -22,14 +23,35 @@ def get_calendar_service():
             creds = flow.run_local_server(port=0)
         with open("token.json", "w") as f:
             f.write(creds.to_json())
-    return build("calendar", "v3", credentials=creds)
+    return creds
 
 def get_upcoming_deadlines(days_ahead: int = 14) -> list:
-    service = get_calendar_service()
+    creds = get_calendar_service()
+    cal_service = build("calendar", "v3", credentials=creds)
+    tasks_service = build("tasks", "v1", credentials=creds)
+
     now = datetime.now(timezone.utc).isoformat()
     future = (datetime.now(timezone.utc) + timedelta(days=days_ahead)).isoformat()
 
-    events_result = service.events().list(
+    # Build a map of task title -> description from Google Tasks
+    task_descriptions = {}
+    try:
+        tasklists = tasks_service.tasklists().list().execute()
+        for tasklist in tasklists.get("items", []):
+            tasks = tasks_service.tasks().list(
+                tasklist=tasklist["id"],
+                showCompleted=False
+            ).execute()
+            for task in tasks.get("items", []):
+                title = task.get("title", "")
+                notes = task.get("notes", "")
+                if title and notes:
+                    task_descriptions[title.lower()] = notes
+    except Exception as e:
+        print(f"Tasks fetch error: {e}")
+
+    # Get calendar events
+    events_result = cal_service.events().list(
         calendarId="primary",
         timeMin=now,
         timeMax=future,
@@ -43,9 +65,13 @@ def get_upcoming_deadlines(days_ahead: int = 14) -> list:
     for event in events:
         start = event["start"].get("dateTime", event["start"].get("date"))
         title = event.get("summary", "Untitled")
-        description = event.get("description", "")
 
-        # Guess recipient type from title
+        # Try to get description from Tasks API using title match
+        raw_desc = event.get("description", "")
+        if "tasks.google.com" in raw_desc or "Changes made to the title" in raw_desc:
+            raw_desc = task_descriptions.get(title.lower(), "")
+        description = raw_desc
+
         title_lower = title.lower()
         if "hod" in title_lower:
             recipient = "hod"
