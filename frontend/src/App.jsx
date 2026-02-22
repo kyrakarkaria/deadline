@@ -8,7 +8,7 @@ import {
   Clock, AlertTriangle, Sparkles,Pencil, BookOpen, Cpu, Mail, X, RotateCcw, Trash2
 } from "lucide-react";
 
-const API = "http://127.0.0.1:8000";
+const API = "https://deadline-sqdh.onrender.com";
 
 const PRIORITY_COLORS = {
   hod: "#e63946", professor: "#e07a5f",
