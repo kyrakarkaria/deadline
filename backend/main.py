@@ -228,9 +228,9 @@ async def run_code(data: CodeInput):
             f.write(data.code)
             tmp_path = f.name
         result = subprocess.run(
-            [sys.executable, tmp_path],
-            capture_output=True, text=True, timeout=60,
-            cwd="/Users/kyrakarkaria/Desktop/deadline/backend"
+        [sys.executable, tmp_path],
+        capture_output=True, text=True, timeout=60,
+        cwd=tempfile.gettempdir()
         )
         os.unlink(tmp_path)
         output = result.stdout if result.stdout else result.stderr
@@ -342,6 +342,7 @@ async def plan_stream():
             Format each time block EXACTLY as:
             - Tonight HH:MM-HH:MM: [task name] - [specific action]
             - Tomorrow HH:MM-HH:MM: [task name] - [specific action]
+            make sure to keep the "-" between the times. eg. tonight 19:00-21:00, tomorrow 14:00-16:00.
 
             ## Extension Recommendations
             Only if genuinely needed. One bullet per task:
