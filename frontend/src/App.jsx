@@ -226,23 +226,50 @@ export default function App() {
   };
 
   const extractDraftMessages = (text) => {
-    const messages = [];
-    const draftSection = text.match(/##\s*Draft Messages([\s\S]*?)$/);
-    if (!draftSection) return messages;
-    const section = draftSection[1];
-    const quotes = section.match(/>\s*"([\s\S]*?)"/g);
-    if (!quotes) return messages;
+  const messages = [];
+  const draftSection = text.match(/##\s*Draft Messages([\s\S]*?)$/);
+  if (!draftSection) return messages;
+  const section = draftSection[1];
+
+  // Match quoted blocks
+  const quotes = section.match(/>\s*"([\s\S]*?)"/g);
+  if (quotes) {
     quotes.forEach(q => {
       const body = q.replace(/^>\s*"/, "").replace(/"$/, "").replace(/>\s*/g, "").trim();
-      if (body.toLowerCase().startsWith("hey") || body.toLowerCase().startsWith("hi")) {
+      const lower = body.toLowerCase();
+      const isWhatsapp = lower.startsWith("hey") || lower.startsWith("hi") || lower.startsWith("hello");
+      const isEmail = lower.startsWith("dear") || lower.startsWith("respected") || lower.startsWith("subject");
+      if (isWhatsapp) {
         messages.push({ type: "whatsapp", body, to: "" });
-      } else if (body.toLowerCase().startsWith("dear")) {
+      } else if (isEmail) {
         const subjectMatch = section.match(/Subject:\*?\*?\s*(.*)/);
         messages.push({ type: "email", subject: subjectMatch ? subjectMatch[1].replace(/\*\*/g, "").trim() : "Extension Request", body, to: "" });
       }
     });
-    return messages;
-  };
+  }
+
+  // Also catch unquoted blocks after "WhatsApp:" or "Email:" labels
+  const whatsappMatch = section.match(/(?:WhatsApp|whatsapp)[:\s]*([^\n]{20,})/g);
+  const emailMatch = section.match(/(?:Email|email)[:\s]*([^\n]{20,})/g);
+  
+  if (messages.length === 0) {
+    // Fallback — grab any paragraph that looks like a message
+    const paragraphs = section.split(/\n\n/).filter(p => p.trim().length > 50);
+    paragraphs.forEach(p => {
+      const clean = p.replace(/[>#*]/g, "").trim();
+      const lower = clean.toLowerCase();
+      if (lower.includes("extension") || lower.includes("deadline") || lower.includes("submit")) {
+        if (lower.startsWith("hey") || lower.startsWith("hi") || lower.startsWith("hello")) {
+          messages.push({ type: "whatsapp", body: clean, to: "" });
+        } else {
+          messages.push({ type: "email", subject: "Extension Request", body: clean, to: "" });
+        }
+      }
+    });
+  }
+
+  return messages;
+};
 
   const runPlanner = () => {
     setPlanSections(null); setPlanStatus([]); setPlanning(true);

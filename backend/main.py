@@ -339,10 +339,16 @@ async def plan_stream():
             ## Extension Recommendations
             Only if genuinely needed. Who to contact, why, how many days
 
-            ## Draft Messages
-            For each extension needed:
-            - Professor/HOD: formal email with Subject line
-            - Senior: casual WhatsApp message to copy-paste
+           ## Draft Messages
+            For EACH extension needed, write ONE message in this exact format:
+            For Professor/HOD:
+            Subject: [subject line]
+            > "Dear Professor [Name], ..."
+
+            For Senior/TA:
+            > "Hey [Name], ..."
+
+            Always use the > " format. Always start professor emails with Dear and WhatsApp with Hey/Hi.
 
             Be specific, honest, and practical. Don't sugarcoat risks."""
 
@@ -372,7 +378,7 @@ async def plan_stream():
             print(f"PLANNER ERROR: {traceback.format_exc()}")
             yield {"data": json.dumps({"type": "error", "content": str(e)})}
 
-    return EventSourceResponse(event_generator(), ping=15)
+    return EventSourceResponse(event_generator(), ping=5)
 
 # ─── HEALTH ─────────────────────────────────────────────────────────────────
 
