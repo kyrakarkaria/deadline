@@ -692,7 +692,8 @@ export default function App() {
                   <div style={{ position: "relative", paddingLeft: 24 }}>
                     <div className="timeline-line" />
                     {planSections["48-Hour Schedule"].split("\n").filter(l => l.trim()).map((line, i) => {
-                      const text = strip(line).replace(/^\*\s*|-\s*/, "").replace(/(\d{2}:\d{2})(\d{2}:\d{2})/, "$1-$2");
+                      const raw = strip(line).replace(/^\*\s*/, "");
+                      const text = raw.replace(/(\d{2}:\d{2})(\d{2}:\d{2})/, "$1-$2");
                       if (!text) return null;
                       const isTime = /\d{1,2}:\d{2}/.test(text);
                       const isSleep = /sleep|rest|break/i.test(text);
