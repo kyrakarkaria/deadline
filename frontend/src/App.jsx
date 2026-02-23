@@ -686,35 +686,34 @@ export default function App() {
                 )}
 
                 {/* 48-Hour Schedule */}
-                {planSections["48-Hour Schedule"].split("\n").filter(l => l.trim()).map((line, i) => {
-  const text = strip(line).replace(/^\*\s*/, "");
-  if (!text) return null;
-  const isHeader = /friday|saturday|sunday|monday|today|tomorrow|tonight/i.test(text);
-  const isTime = /\d{1,2}:\d{2}/.test(text);
-  const isSleep = /sleep|rest|break/i.test(text);
-  
-  if (isHeader) return (
-    <div key={i} style={{ marginBottom: 10, marginTop: i > 0 ? 18 : 0 }}>
-      <span className="handwritten" style={{ fontSize: 18, color: C.lavender, fontWeight: 700 }}>{text}</span>
-    </div>
-  );
-  
-  if (isSleep) return (
-    <div key={i} style={{ position: "relative", marginBottom: 8 }}>
-      <div style={{ position: "absolute", left: -22, top: 8, width: 10, height: 10, borderRadius: "50%", background: C.sage, border: `2px solid ${C.paper}` }} />
-      <div className="handwritten" style={{ padding: "6px 12px", fontSize: 15, color: C.faded, fontStyle: "italic" }}>{text}</div>
-    </div>
-  );
-  
-  return (
-    <div key={i} style={{ position: "relative", marginBottom: 8 }}>
-      <div style={{ position: "absolute", left: -22, top: 8, width: 10, height: 10, borderRadius: "50%", background: isTime ? C.lavender : C.border, border: `2px solid ${C.paper}` }} />
-      <div style={{ padding: "8px 12px", background: isTime ? "#f5f2ff" : C.bg, borderRadius: 8, fontSize: 13, lineHeight: 1.5, fontWeight: isTime ? 700 : 400, color: isTime ? "#6c63b6" : C.ink, border: isTime ? "1px solid #e0d8f5" : "none" }}>
-        {text}
-      </div>
-    </div>
-  );
-})}
+                {planSections["48-Hour Schedule"] && (
+                <div className="card" style={{ padding: 28 }}>
+                  <div className="handwritten" style={{ fontSize: 26, color: C.ink, marginBottom: 16, fontWeight: 700 }}>48-Hour Schedule</div>
+                  <div style={{ position: "relative", paddingLeft: 24 }}>
+                    <div className="timeline-line" />
+                    {planSections["48-Hour Schedule"].split("\n").filter(l => l.trim()).map((line, i) => {
+                      const text = strip(line).replace(/^\*\s*|-\s*/, "");
+                      if (!text) return null;
+                      const isTime = /\d{1,2}:\d{2}/.test(text);
+                      const isSleep = /sleep|rest|break/i.test(text);
+                      if (isSleep) return (
+                        <div key={i} style={{ position: "relative", marginBottom: 8 }}>
+                          <div style={{ position: "absolute", left: -22, top: 8, width: 10, height: 10, borderRadius: "50%", background: C.sage, border: `2px solid ${C.paper}` }} />
+                          <div className="handwritten" style={{ padding: "6px 12px", fontSize: 15, color: C.faded, fontStyle: "italic" }}>{text}</div>
+                        </div>
+                      );
+                      return (
+                        <div key={i} style={{ position: "relative", marginBottom: 8 }}>
+                          <div style={{ position: "absolute", left: -22, top: 8, width: 10, height: 10, borderRadius: "50%", background: isTime ? C.lavender : C.border, border: `2px solid ${C.paper}` }} />
+                          <div style={{ padding: "8px 12px", background: isTime ? "#f5f2ff" : C.bg, borderRadius: 8, fontSize: 13, lineHeight: 1.5, fontWeight: isTime ? 700 : 400, color: isTime ? "#6c63b6" : C.ink, border: isTime ? "1px solid #e0d8f5" : "none" }}>
+                            {text}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                )}
 
                 {/* Extension Recommendations */}
                 {planSections["Extension Recommendations"] && (
