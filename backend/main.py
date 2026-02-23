@@ -339,6 +339,7 @@ async def plan_stream():
 
             ## 48-Hour Schedule
             List time blocks as bullet points:
+            Format each time block EXACTLY as:
             - Tonight HH:MM-HH:MM: [task name] - [specific action]
             - Tomorrow HH:MM-HH:MM: [task name] - [specific action]
 
