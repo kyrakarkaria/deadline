@@ -655,31 +655,30 @@ export default function App() {
                     <table style={{ width: "100%", fontSize: 13 }}>
                       <thead>
                         <tr>
-                          {["Task", "Hours", "Left", "Risk"].map(h => (
+                          {["Task", "Hours Needed", "Hours Left", "Risk"].map(h => (
                             <th key={h} style={{ textAlign: "left", padding: "4px 10px", color: C.faded, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {planSections["Time Estimates"].split("\n")
-                          .filter(l => l.includes("|") && !l.includes("---") && !l.toLowerCase().includes("task"))
-                          .map((line, i) => {
-                            const cols = line.split("|").map(c => c.replace(/\*\*/g, "").trim()).filter(Boolean);
-                            if (cols.length < 3) return null;
-                            const isCrit = cols[3]?.toLowerCase().includes("critical");
-                            const isHigh = cols[3]?.toLowerCase().includes("high");
-                            const riskColor = isCrit ? "#e63946" : isHigh ? "#e07a5f" : "#40916c";
-                            return (
-                              <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
-                                <td style={{ padding: "10px", fontWeight: 700, color: C.ink }}>{cols[0]}</td>
-                                <td style={{ padding: "10px", color: C.faded }}>{cols[1]}</td>
-                                <td style={{ padding: "10px", color: C.faded }}>{cols[2]}</td>
-                                <td style={{ padding: "10px" }}>
-                                  <span className="pill" style={{ background: `${riskColor}15`, color: riskColor }}>{cols[3]}</span>
-                                </td>
-                              </tr>
-                            );
-                          })}
+                        {assignments.map((a) => {
+                          const hoursLeft = Math.max(0, (new Date(a.due) - new Date()) / 36e5);
+                          const isOverdue = new Date(a.due) < new Date();
+                          const baseHours = [0, 1, 2, 4, 6, 10][a.difficulty || 3];
+                          const hoursNeeded = Math.round(baseHours * (1 - (a.progress_percent || 0) / 100) * 10) / 10;
+                          const isCrit = isOverdue || hoursNeeded > hoursLeft;
+                          const isHigh = !isCrit && hoursLeft < 24;
+                          const riskColor = isCrit ? "#e63946" : isHigh ? "#e07a5f" : "#40916c";
+                          const risk = isCrit ? (isOverdue ? "OVERDUE" : "CRITICAL") : isHigh ? "HIGH" : hoursLeft < 48 ? "MEDIUM" : "LOW";
+                          return (
+                            <tr key={a.id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                              <td style={{ padding: "10px", fontWeight: 700, color: C.ink }}>{a.name}</td>
+                              <td style={{ padding: "10px", color: C.faded }}>{hoursNeeded}h</td>
+                              <td style={{ padding: "10px", color: C.faded }}>{isOverdue ? "OVERDUE" : `${Math.round(hoursLeft)}h`}</td>
+                              <td style={{ padding: "10px" }}><span className="pill" style={{ background: `${riskColor}15`, color: riskColor }}>{risk}</span></td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
