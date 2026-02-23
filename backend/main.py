@@ -311,7 +311,6 @@ async def plan_stream():
                 if a.get("created_at"): a["created_at"] = a["created_at"].isoformat()
 
             prompt = f"""You are an academic planning agent. Analyze this student's full workload.
-
             IMPORTANT: Always refer to assignments by their NAME not their ID number.
 
             Assignments:
@@ -319,38 +318,46 @@ async def plan_stream():
 
             Priority rules:
             - HOD assignments: highest priority, most formal extension requests
-            - Professor assignments: high priority, formal email if extension needed  
+            - Professor assignments: high priority, formal email if extension needed
             - Senior/TA assignments: medium priority, casual WhatsApp message if extension needed
             - Self/personal: lowest priority
 
-            For each assignment consider progress_percent (real AI-analyzed completion), due date, weight, and description.
+            For each assignment consider progress_percent (real AI-analyzed completion), due date, weight, description, and contact_name (professor/senior name).
 
-            Your output MUST have these exact sections:
+            Your output MUST have EXACTLY these sections with EXACTLY these headers:
 
             ## Priority Order
-            List tasks 1,2,3 with recipient type and urgency reason
+            List ALL tasks numbered 1,2,3... Format each line as:
+            1. [task name] ([recipient type]): [urgency reason]
 
             ## Time Estimates
-            For each task: hours needed to complete, hours until deadline, risk level
+            Output ONLY a markdown table with EXACTLY these columns:
+            | Task | Hours Needed | Hours Left | Risk |
+            |------|-------------|------------|------|
+            | [name] | [number] | [number or OVERDUE] | [CRITICAL/HIGH/MEDIUM/LOW] |
+            Include ALL assignments. Nothing else in this section.
 
             ## 48-Hour Schedule
-            Specific hour blocks — what to work on and when
+            List time blocks as bullet points:
+            - Tonight HH:MM-HH:MM: [task name] - [specific action]
+            - Tomorrow HH:MM-HH:MM: [task name] - [specific action]
 
             ## Extension Recommendations
-            Only if genuinely needed. Who to contact, why, how many days
+            Only if genuinely needed. One bullet per task:
+            - [task name]: Request [X] days from [contact_name or Professor/Senior]. Reason: [reason]
+            If no extensions needed, write: No extensions needed.
 
-           ## Draft Messages
-            For EACH extension needed, write ONE message in this exact format:
-            For Professor/HOD:
-            Subject: [subject line]
-            > "Dear Professor [Name], ..."
+            ## Draft Messages
+            For EACH extension needed write ONE message.
+            For Professor/HOD use EXACTLY this format:
+            Subject: Extension Request - [task name]
+            > "Dear [contact_name or Professor], [formal message body]. Best regards, Kyra"
 
-            For Senior/TA:
-            > "Hey [Name], ..."
+            For Senior/TA use EXACTLY this format:
+            > "Hey [contact_name or Senior], [casual message body]"
 
             Always use the > " format. Always start professor emails with Dear and WhatsApp with Hey/Hi.
-
-            Be specific, honest, and practical. Don't sugarcoat risks."""
+            Be specific, honest, and practical."""
 
             async for event in agent.astream_events(
                 {"messages": [HumanMessage(content=prompt)], "assignment_context": {}},
