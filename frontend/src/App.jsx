@@ -705,7 +705,7 @@ export default function App() {
                       );
                       return (
                         <div key={i} style={{ position: "relative", marginBottom: 8 }}>
-                          <div style={{ position: "absolute", left: -13, top: 8, width: 10, height: 10, borderRadius: "50%", background: isTime ? C.lavender : C.border, border: `2px solid ${C.paper}` }} />
+                          <div style={{ position: "absolute", left: -17, top: 20, width: 10, height: 10, borderRadius: "50%", background: isTime ? C.lavender : C.border, border: `2px solid ${C.paper}` }} />
                           <div style={{ padding: "8px 12px", background: isTime ? "#f5f2ff" : C.bg, borderRadius: 8, fontSize: 13, lineHeight: 1.5, fontWeight: isTime ? 700 : 400, color: isTime ? "#6c63b6" : C.ink, border: isTime ? "1px solid #e0d8f5" : "none" }}>
                             {text}
                           </div>
