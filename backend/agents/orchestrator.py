@@ -8,12 +8,13 @@ from langchain_core.messages import BaseMessage
 import operator
 import os
 from dotenv import load_dotenv
+from langchain_groq import ChatGroq
 
 load_dotenv()
 
-llm_base = ChatGoogleGenerativeAI(
-    model="gemini-flash-latest",
-    google_api_key=os.getenv("GEMINI_API_KEY")
+llm_base = ChatGroq(
+    model="llama-3.3-70b-versatile",
+    api_key=os.getenv("GROQ_API_KEY")
 )
 
 @tool
