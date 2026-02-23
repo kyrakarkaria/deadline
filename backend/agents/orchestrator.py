@@ -99,7 +99,7 @@ Assignment: {assignment_name}
 Reason: {reason}
 Progress so far: {current_progress}
 Days requested: {days_requested}
-Tone: very respectful, professional, brief. Show effort already made."""
+Tone: very respectful, professional, brief. Show effort already made. Make sure to have the proper formatting of an email."""
     else:
         prompt = f"""Write a casual WhatsApp message requesting an extension.
 Senior/TA: {professor_name}
